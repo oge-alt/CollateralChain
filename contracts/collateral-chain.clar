@@ -110,3 +110,49 @@
     (ok new-loan-id)
   )
 )
+
+;; Repay Loan
+(define-public (repay-loan 
+  (loan-id uint)
+  (collateral-token <ft-trait>)
+  (repayment-token <ft-trait>)
+  (repayment-amount uint)
+)
+  (let 
+    (
+      (loan (unwrap! 
+        (map-get? loans {loan-id: loan-id, borrower: tx-sender}) 
+        ERR-LOAN-NOT-FOUND
+      ))
+      (total-repayment (calculate-total-repayment {
+        borrowed-amount: (get borrowed-amount loan),
+        interest-rate: (get interest-rate loan),
+        start-block: (get start-block loan)
+      }))
+    )
+    ;; Validate loan is active
+    (asserts! (get is-active loan) ERR-LOAN-ALREADY-LIQUIDATED)
+    (asserts! (>= repayment-amount total-repayment) ERR-INSUFFICIENT-BALANCE)
+
+    ;; Transfer repayment
+    (try! (contract-call? repayment-token transfer total-repayment tx-sender (as-contract tx-sender) none))
+
+    ;; Return collateral
+    (try! (as-contract 
+      (contract-call? collateral-token transfer 
+        (get collateral-amount loan) 
+        (as-contract tx-sender) 
+        tx-sender 
+        none
+      )
+    ))
+
+    ;; Mark loan as inactive
+    (map-set loans 
+      {loan-id: loan-id, borrower: tx-sender}
+      (merge loan {is-active: false})
+    )
+
+    (ok true)
+  )
+)
