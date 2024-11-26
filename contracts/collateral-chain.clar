@@ -68,3 +68,45 @@
     (ok (var-set liquidation-penalty new-penalty))
   )
 )
+
+;; Loan Creation and Management
+(define-public (create-loan 
+  (collateral-token <ft-trait>) 
+  (collateral-amount uint)
+  (borrow-amount uint)
+)
+  (let 
+    (
+      (borrower tx-sender)
+      (new-loan-id (+ (var-get loan-counter) u1))
+      (collateral-balance (unwrap! (contract-call? collateral-token get-balance borrower) ERR-INSUFFICIENT-BALANCE))
+      (interest-rate (calculate-dynamic-interest-rate borrow-amount))
+      (liquidation-threshold (calculate-liquidation-threshold collateral-amount borrow-amount))
+    )
+    ;; Validate loan parameters
+    (asserts! (>= collateral-balance collateral-amount) ERR-INSUFFICIENT-BALANCE)
+    (asserts! (> borrow-amount u0) ERR-INVALID-LOAN-AMOUNT)
+    (asserts! (>= liquidation-threshold MIN-COLLATERALIZATION-RATIO) ERR-INVALID-COLLATERAL-RATIO)
+
+    ;; Transfer collateral to contract
+    (try! (contract-call? collateral-token transfer collateral-amount borrower (as-contract tx-sender) none))
+
+    ;; Create loan record
+    (map-set loans 
+      {loan-id: new-loan-id, borrower: borrower}
+      {
+        collateral-amount: collateral-amount,
+        borrowed-amount: borrow-amount,
+        interest-rate: interest-rate,
+        start-block: block-height,
+        is-active: true,
+        liquidation-threshold: liquidation-threshold
+      }
+    )
+
+    ;; Increment loan counter
+    (var-set loan-counter new-loan-id)
+
+    (ok new-loan-id)
+  )
+)
