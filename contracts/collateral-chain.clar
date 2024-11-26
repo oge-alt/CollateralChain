@@ -13,3 +13,12 @@
     (get-symbol () (response (string-ascii 32) uint))
   )
 )
+
+;; Errors
+(define-constant ERR-NOT-AUTHORIZED (err u1000))
+(define-constant ERR-INSUFFICIENT-BALANCE (err u1001))
+(define-constant ERR-LOAN-NOT-FOUND (err u1002))
+(define-constant ERR-INVALID-LOAN-AMOUNT (err u1003))
+(define-constant ERR-LOAN-ALREADY-LIQUIDATED (err u1004))
+(define-constant ERR-LOAN-NOT-LIQUIDATABLE (err u1005))
+(define-constant ERR-INVALID-COLLATERAL-RATIO (err u1006))
