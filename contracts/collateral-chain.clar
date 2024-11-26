@@ -22,6 +22,7 @@
 (define-constant ERR-LOAN-ALREADY-LIQUIDATED (err u1004))
 (define-constant ERR-LOAN-NOT-LIQUIDATABLE (err u1005))
 (define-constant ERR-INVALID-COLLATERAL-RATIO (err u1006))
+(define-constant ERR-INVALID-ADMIN-CHANGE (err u1007))
 
 ;; Storage
 ;; Loan structure tracking individual loan details
@@ -56,7 +57,15 @@
 ;; Admin functions
 (define-public (set-admin (new-admin principal))
   (begin
+    ;; Ensure only current admin can change admin
     (asserts! (is-eq tx-sender (var-get admin-principal)) ERR-NOT-AUTHORIZED)
+    
+    ;; Prevent setting the same admin or setting to tx-sender if not admin
+    (asserts! (and 
+      (not (is-eq new-admin (var-get admin-principal)))
+      (not (is-eq new-admin tx-sender))
+    ) ERR-INVALID-ADMIN-CHANGE)
+    
     (ok (var-set admin-principal new-admin))
   )
 )
@@ -83,7 +92,8 @@
       (interest-rate (calculate-dynamic-interest-rate borrow-amount))
       (liquidation-threshold (calculate-liquidation-threshold collateral-amount borrow-amount))
     )
-    ;; Validate loan parameters
+    ;; Additional input validations
+    (asserts! (> collateral-amount u0) ERR-INVALID-LOAN-AMOUNT)
     (asserts! (>= collateral-balance collateral-amount) ERR-INSUFFICIENT-BALANCE)
     (asserts! (> borrow-amount u0) ERR-INVALID-LOAN-AMOUNT)
     (asserts! (>= liquidation-threshold MIN-COLLATERALIZATION-RATIO) ERR-INVALID-COLLATERAL-RATIO)
@@ -120,6 +130,7 @@
 )
   (let 
     (
+      ;; Validate loan exists and belongs to sender
       (loan (unwrap! 
         (map-get? loans {loan-id: loan-id, borrower: tx-sender}) 
         ERR-LOAN-NOT-FOUND
@@ -129,9 +140,13 @@
         interest-rate: (get interest-rate loan),
         start-block: (get start-block loan)
       }))
+      ;; Additional validation for repayment token balance
+      (repayment-balance (unwrap! (contract-call? repayment-token get-balance tx-sender) ERR-INSUFFICIENT-BALANCE))
     )
-    ;; Validate loan is active
+    ;; Input and state validations
+    (asserts! (> loan-id u0) ERR-INVALID-LOAN-AMOUNT)
     (asserts! (get is-active loan) ERR-LOAN-ALREADY-LIQUIDATED)
+    (asserts! (>= repayment-balance total-repayment) ERR-INSUFFICIENT-BALANCE)
     (asserts! (>= repayment-amount total-repayment) ERR-INSUFFICIENT-BALANCE)
 
     ;; Transfer repayment
@@ -165,6 +180,11 @@
 )
   (let 
     (
+      ;; Validate input parameters
+      (validated-loan-id (asserts! (> loan-id u0) ERR-INVALID-LOAN-AMOUNT))
+      (validated-borrower (asserts! (not (is-eq borrower tx-sender)) ERR-NOT-AUTHORIZED))
+      
+      ;; Fetch loan details
       (loan (unwrap! 
         (map-get? loans {loan-id: loan-id, borrower: borrower}) 
         ERR-LOAN-NOT-FOUND
