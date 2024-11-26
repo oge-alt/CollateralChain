@@ -156,3 +156,45 @@
     (ok true)
   )
 )
+
+;; Liquidation Mechanism
+(define-public (liquidate-loan 
+  (loan-id uint) 
+  (borrower principal)
+  (collateral-token <ft-trait>)
+)
+  (let 
+    (
+      (loan (unwrap! 
+        (map-get? loans {loan-id: loan-id, borrower: borrower}) 
+        ERR-LOAN-NOT-FOUND
+      ))
+      (current-collateral-ratio (calculate-current-collateral-ratio {
+        collateral-amount: (get collateral-amount loan),
+        borrowed-amount: (get borrowed-amount loan)
+      }))
+      (penalty-amount (/ (* (get collateral-amount loan) (var-get liquidation-penalty)) u100))
+    )
+    ;; Validate liquidation conditions
+    (asserts! (get is-active loan) ERR-LOAN-ALREADY-LIQUIDATED)
+    (asserts! (< current-collateral-ratio (get liquidation-threshold loan)) ERR-LOAN-NOT-LIQUIDATABLE)
+
+    ;; Transfer collateral to liquidator, minus penalty
+    (try! (as-contract 
+      (contract-call? collateral-token transfer 
+        (- (get collateral-amount loan) penalty-amount) 
+        (as-contract tx-sender) 
+        tx-sender 
+        none
+      )
+    ))
+
+    ;; Mark loan as inactive
+    (map-set loans 
+      {loan-id: loan-id, borrower: borrower}
+      (merge loan {is-active: false})
+    )
+
+    (ok true)
+  )
+)
