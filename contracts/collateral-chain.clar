@@ -60,3 +60,11 @@
     (ok (var-set admin-principal new-admin))
   )
 )
+
+(define-public (set-liquidation-penalty (new-penalty uint))
+  (begin
+    (asserts! (is-eq tx-sender (var-get admin-principal)) ERR-NOT-AUTHORIZED)
+    (asserts! (< new-penalty u50) ERR-NOT-AUTHORIZED)  ;; Prevent excessive penalties
+    (ok (var-set liquidation-penalty new-penalty))
+  )
+)
