@@ -198,3 +198,42 @@
     (ok true)
   )
 )
+
+;; Utility Functions
+(define-read-only (calculate-dynamic-interest-rate (borrow-amount uint))
+  (let 
+    (
+      (base-rate BASE-INTEREST-RATE)
+      (scaling-factor (/ borrow-amount u10000))
+    )
+    (+ base-rate (* base-rate scaling-factor))
+  )
+)
+
+(define-read-only (calculate-liquidation-threshold (collateral-amount uint) (borrow-amount uint))
+  (/ (* collateral-amount u100) borrow-amount)
+)
+
+(define-read-only (calculate-current-collateral-ratio (loan {
+  collateral-amount: uint, 
+  borrowed-amount: uint
+}))
+  (/ (* (get collateral-amount loan) u100) (get borrowed-amount loan))
+)
+
+(define-read-only (calculate-total-repayment (loan {
+  borrowed-amount: uint,
+  interest-rate: uint,
+  start-block: uint
+}))
+  (let 
+    (
+      (blocks-elapsed (- block-height (get start-block loan)))
+      (interest-accrued (/ 
+        (* (get borrowed-amount loan) (get interest-rate loan) blocks-elapsed) 
+        (* u100 INTEREST-RATE-MULTIPLIER)
+      ))
+    )
+    (+ (get borrowed-amount loan) interest-accrued)
+  )
+)
