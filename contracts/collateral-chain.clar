@@ -22,3 +22,20 @@
 (define-constant ERR-LOAN-ALREADY-LIQUIDATED (err u1004))
 (define-constant ERR-LOAN-NOT-LIQUIDATABLE (err u1005))
 (define-constant ERR-INVALID-COLLATERAL-RATIO (err u1006))
+
+;; Storage
+;; Loan structure tracking individual loan details
+(define-map loans 
+  {
+    loan-id: uint,
+    borrower: principal
+  }
+  {
+    collateral-amount: uint,
+    borrowed-amount: uint,
+    interest-rate: uint,
+    start-block: uint,
+    is-active: bool,
+    liquidation-threshold: uint
+  }
+)
