@@ -140,14 +140,18 @@
         interest-rate: (get interest-rate loan),
         start-block: (get start-block loan)
       }))
-      ;; Additional validation for repayment token balance
+      ;; Additional validation for token balances
       (repayment-balance (unwrap! (contract-call? repayment-token get-balance tx-sender) ERR-INSUFFICIENT-BALANCE))
+      (collateral-balance (unwrap! (contract-call? collateral-token get-balance (as-contract tx-sender)) ERR-INSUFFICIENT-BALANCE))
     )
     ;; Input and state validations
     (asserts! (> loan-id u0) ERR-INVALID-LOAN-AMOUNT)
     (asserts! (get is-active loan) ERR-LOAN-ALREADY-LIQUIDATED)
     (asserts! (>= repayment-balance total-repayment) ERR-INSUFFICIENT-BALANCE)
     (asserts! (>= repayment-amount total-repayment) ERR-INSUFFICIENT-BALANCE)
+    
+    ;; Additional token validation
+    (asserts! (>= collateral-balance (get collateral-amount loan)) ERR-INSUFFICIENT-BALANCE)
 
     ;; Transfer repayment
     (try! (contract-call? repayment-token transfer total-repayment tx-sender (as-contract tx-sender) none))
@@ -194,7 +198,16 @@
         borrowed-amount: (get borrowed-amount loan)
       }))
       (penalty-amount (/ (* (get collateral-amount loan) (var-get liquidation-penalty)) u100))
+      
+      ;; Validate collateral token balance
+      (collateral-balance (unwrap! 
+        (contract-call? collateral-token get-balance (as-contract tx-sender)) 
+        ERR-INSUFFICIENT-BALANCE
+      ))
     )
+    ;; Additional collateral balance validation
+    (asserts! (>= collateral-balance (get collateral-amount loan)) ERR-INSUFFICIENT-BALANCE)
+    
     ;; Validate liquidation conditions
     (asserts! (get is-active loan) ERR-LOAN-ALREADY-LIQUIDATED)
     (asserts! (< current-collateral-ratio (get liquidation-threshold loan)) ERR-LOAN-NOT-LIQUIDATABLE)
