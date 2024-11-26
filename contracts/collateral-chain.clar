@@ -48,3 +48,15 @@
 (define-constant BASE-INTEREST-RATE u5)  ;; 5% base interest rate
 (define-constant INTEREST-RATE-MULTIPLIER u100)
 (define-constant MAX-LOAN-TERM u52560)  ;; ~1 year in blocks (assuming 10-minute blocks)
+
+;; Governance parameters (can be updated by admin)
+(define-data-var admin-principal principal tx-sender)
+(define-data-var liquidation-penalty uint u10)  ;; 10% liquidation penalty
+
+;; Admin functions
+(define-public (set-admin (new-admin principal))
+  (begin
+    (asserts! (is-eq tx-sender (var-get admin-principal)) ERR-NOT-AUTHORIZED)
+    (ok (var-set admin-principal new-admin))
+  )
+)
