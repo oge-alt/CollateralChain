@@ -39,3 +39,12 @@
     liquidation-threshold: uint
   }
 )
+
+;; Global loan counter
+(define-data-var loan-counter uint u0)
+
+;; Loan parameters
+(define-constant MIN-COLLATERALIZATION-RATIO u150)  ;; 150% minimum collateral ratio
+(define-constant BASE-INTEREST-RATE u5)  ;; 5% base interest rate
+(define-constant INTEREST-RATE-MULTIPLIER u100)
+(define-constant MAX-LOAN-TERM u52560)  ;; ~1 year in blocks (assuming 10-minute blocks)
