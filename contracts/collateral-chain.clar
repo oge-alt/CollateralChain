@@ -237,3 +237,22 @@
     (+ (get borrowed-amount loan) interest-accrued)
   )
 )
+
+;; Loan Status and Information Retrieval
+(define-read-only (get-loan-details (loan-id uint) (borrower principal))
+  (map-get? loans {loan-id: loan-id, borrower: borrower})
+)
+
+(define-read-only (is-loan-liquidatable (loan-id uint) (borrower principal))
+  (match (map-get? loans {loan-id: loan-id, borrower: borrower})
+    loan 
+      (< 
+        (calculate-current-collateral-ratio {
+          collateral-amount: (get collateral-amount loan),
+          borrowed-amount: (get borrowed-amount loan)
+        }) 
+        (get liquidation-threshold loan)
+      )
+    false
+  )
+)
